@@ -5,27 +5,25 @@ const cors = require("cors");
 const app = express();
 
 // CORS configuration
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header("Access-Control-Allow-Credentials", true);
-
-  // Handle OPTIONS method
-  if (req.method === "OPTIONS") {
-    return res.status(200).json({
-      body: "OK",
-    });
-  }
-
-  next();
-});
+const corsOptions = {
+  origin: [
+    "https://aiui222.vercel.app",
+    "http://localhost:3000",
+    "https://xrpthink.org",
+    "http://localhost:5173",
+  ],
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
 
 // Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Pre-flight requests
+app.options("*", cors(corsOptions));
 
 // Import handlers
 const chatHandler = require("./api/chat");
@@ -66,4 +64,5 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
+// Export for Vercel
 module.exports = app;
