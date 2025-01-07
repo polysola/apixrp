@@ -50,11 +50,12 @@ export default async function handler(req) {
     });
 
     const image = await openai.images.generate({
-      model: "dall-e-2",
+      model: "dall-e-3",
       prompt: prompt,
       n: 1,
       size: "1024x1024",
       response_format: "url",
+      quality: "standard",
     });
 
     return new Response(
