@@ -17,10 +17,13 @@ app.post("/api/generate-image", (req, res) => imageHandler(req, res));
 
 // Test endpoint
 app.get("/api/test", (req, res) => {
+  console.log("API Key exists:", !!process.env.OPENAI_API_KEY);
+  console.log("Environment:", process.env.NODE_ENV);
   res.json({
     message: "API is working",
     time: new Date().toISOString(),
     hasApiKey: !!process.env.OPENAI_API_KEY,
+    env: process.env.NODE_ENV,
   });
 });
 
