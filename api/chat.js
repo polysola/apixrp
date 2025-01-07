@@ -1,25 +1,50 @@
-const { OpenAI } = require("openai");
+import { OpenAI } from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+export const config = {
+  runtime: "edge",
+  regions: ["sin1"],
+};
 
-module.exports = async function handler(req, res) {
-  // Log method và path
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://www.xrpthink.org",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Credentials": "true",
+  "Content-Type": "application/json",
+};
 
-  // Thêm health check với GET method
+export default async function handler(req) {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   if (req.method === "GET") {
-    return res.status(200).json({ status: "Chat endpoint is working" });
+    return new Response(
+      JSON.stringify({ status: "Chat endpoint is working" }),
+      {
+        status: 200,
+        headers: corsHeaders,
+      }
+    );
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    console.log("Request body:", req.body); // Log request body
-    const { message } = req.body;
+    const { message } = await req.json();
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     const completion = await openai.chat.completions.create({
       messages: [
@@ -32,17 +57,26 @@ https://t.me/XRPThinkAI_Portal You are given a message and you need to respond t
       model: "gpt-3.5-turbo",
     });
 
-    console.log("OpenAI response:", completion.choices[0]); // Log OpenAI response
-
-    res.json({
-      response: completion.choices[0].message.content,
-    });
+    return new Response(
+      JSON.stringify({
+        response: completion.choices[0].message.content,
+      }),
+      {
+        status: 200,
+        headers: corsHeaders,
+      }
+    );
   } catch (error) {
-    console.error("Detailed error:", error); // Log detailed error
-    res.status(500).json({
-      error: "Something went wrong",
-      details: error.message,
-      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
-    });
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Something went wrong",
+        details: error.message,
+      }),
+      {
+        status: 500,
+        headers: corsHeaders,
+      }
+    );
   }
-};
+}
