@@ -4,12 +4,20 @@
         {
             "src": "index.js",
             "use": "@vercel/node"
+        },
+        {
+            "src": "api/*.js",
+            "use": "@vercel/node"
         }
     ],
     "routes": [
         {
-            "src": "/api/(chat|generate-image)",
-            "continue": true
+            "src": "/api/chat",
+            "dest": "/api/chat.js"
+        },
+        {
+            "src": "/api/generate-image",
+            "dest": "/api/generate-image.js"
         },
         {
             "src": "/(.*)",
