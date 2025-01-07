@@ -2,13 +2,30 @@ import { OpenAI } from "openai";
 
 export const config = {
   runtime: "edge",
-  regions: ["sin1"], // Singapore region for better APAC performance
+  regions: ["sin1"],
+};
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://www.xrpthink.org",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Credentials": "true",
+  "Content-Type": "application/json",
 };
 
 export default async function handler(req) {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
+      headers: corsHeaders,
     });
   }
 
@@ -21,7 +38,10 @@ export default async function handler(req) {
           success: false,
           error: "Prompt is required",
         }),
-        { status: 400 }
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
       );
     }
 
@@ -44,12 +64,7 @@ export default async function handler(req) {
       }),
       {
         status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "https://www.xrpthink.org",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
+        headers: corsHeaders,
       }
     );
   } catch (error) {
@@ -62,10 +77,7 @@ export default async function handler(req) {
       }),
       {
         status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "https://www.xrpthink.org",
-        },
+        headers: corsHeaders,
       }
     );
   }
