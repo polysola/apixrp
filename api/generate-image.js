@@ -1,21 +1,13 @@
 const { OpenAI } = require("openai");
 
 const openai = new OpenAI({
-  apiKey:
-    process.env.OPENAI_API_KEY ||
-    (() => {
-      console.error("OPENAI_API_KEY is missing");
-      throw new Error("OPENAI_API_KEY is not configured");
-    })(),
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 async function handler(req, res) {
-  // Log để debug
-  console.log("Request received:", {
-    method: req.method,
-    body: req.body,
-    hasApiKey: !!process.env.OPENAI_API_KEY,
-  });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   try {
     const { prompt } = req.body;
@@ -27,54 +19,39 @@ async function handler(req, res) {
       });
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000);
+    // Giảm timeout xuống 25 giây để tránh Vercel timeout (30s)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), 25000)
+    );
 
-    try {
-      const image = await openai.images.generate(
-        {
-          model: "dall-e-3",
-          prompt: prompt,
-          n: 1,
-          size: "1024x1024",
-        },
-        {
-          signal: controller.signal,
-        }
-      );
+    const imagePromise = openai.images.generate({
+      model: "dall-e-3",
+      prompt: prompt,
+      n: 1,
+      size: "1024x1024",
+    });
 
-      clearTimeout(timeoutId);
-      console.log("Image generated successfully:", image.data[0].url);
+    // Race between the image generation and timeout
+    const image = await Promise.race([imagePromise, timeoutPromise]);
 
-      return res.status(200).json({
-        success: true,
-        imageUrl: image.data[0].url,
-      });
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.error("OpenAI API Error:", error);
+    return res.status(200).json({
+      success: true,
+      imageUrl: image.data[0].url,
+    });
+  } catch (error) {
+    console.error("Error:", error);
 
-      if (error.name === "AbortError") {
-        return res.status(408).json({
-          success: false,
-          error: "Request timeout",
-          message:
-            "Image generation took too long. Please try with a simpler prompt.",
-        });
-      }
-
-      return res.status(500).json({
+    if (error.message === "Request timeout") {
+      return res.status(408).json({
         success: false,
-        error: "OpenAI API Error",
-        message: error.message,
-        code: error.code,
+        error:
+          "Image generation is taking too long. Please try with a simpler prompt.",
       });
     }
-  } catch (error) {
-    console.error("Server Error:", error);
+
     return res.status(500).json({
       success: false,
-      error: "Server Error",
+      error: "Failed to generate image",
       message: error.message,
     });
   }
