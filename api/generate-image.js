@@ -1,71 +1,72 @@
-const { OpenAI } = require("openai");
+import { OpenAI } from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+export const config = {
+  runtime: "edge",
+  regions: ["sin1"], // Singapore region for better APAC performance
+};
 
-async function handler(req, res) {
+export default async function handler(req) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  // Set shorter timeout for Vercel Hobby plan (max 10s)
-  const TIMEOUT_DURATION = 9000; // 9 seconds
-
-  try {
-    const { prompt } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({
-        success: false,
-        error: "Prompt is required",
-      });
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
-
-    try {
-      const image = await openai.images.generate(
-        {
-          model: "dall-e-2", // Using DALL-E 2 for faster generation
-          prompt: prompt,
-          n: 1,
-          size: "1024x1024",
-          response_format: "url",
-        },
-        {
-          signal: controller.signal,
-          timeout: TIMEOUT_DURATION,
-        }
-      );
-
-      clearTimeout(timeoutId);
-
-      return res.status(200).json({
-        success: true,
-        imageUrl: image.data[0].url,
-      });
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error.name === "AbortError") {
-        return res.status(504).json({
-          success: false,
-          error: "Request timeout",
-          message: "Please try again or use a simpler prompt",
-        });
-      }
-      throw error;
-    }
-  } catch (error) {
-    console.error("Error details:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to generate image",
-      message: error.message,
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
     });
   }
-}
 
-module.exports = handler;
+  try {
+    const { prompt } = await req.json();
+
+    if (!prompt) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Prompt is required",
+        }),
+        { status: 400 }
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const image = await openai.images.generate({
+      model: "dall-e-2",
+      prompt: prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "url",
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        imageUrl: image.data[0].url,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "https://www.xrpthink.org",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Failed to generate image",
+        message: error.message,
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "https://www.xrpthink.org",
+        },
+      }
+    );
+  }
+}
