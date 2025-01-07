@@ -19,33 +19,42 @@ async function handler(req, res) {
       });
     }
 
-    // Giảm timeout xuống 25 giây để tránh Vercel timeout (30s)
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), 25000)
-    );
+    // Set timeout to 50 seconds (Vercel max is 60s)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 50000);
 
-    const imagePromise = openai.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-    });
+    try {
+      const image = await openai.images.generate(
+        {
+          model: "dall-e-3",
+          prompt: prompt,
+          n: 1,
+          size: "1024x1024",
+        },
+        {
+          signal: controller.signal,
+        }
+      );
 
-    // Race between the image generation and timeout
-    const image = await Promise.race([imagePromise, timeoutPromise]);
+      clearTimeout(timeoutId);
 
-    return res.status(200).json({
-      success: true,
-      imageUrl: image.data[0].url,
-    });
+      return res.status(200).json({
+        success: true,
+        imageUrl: image.data[0].url,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   } catch (error) {
     console.error("Error:", error);
 
-    if (error.message === "Request timeout") {
-      return res.status(408).json({
+    if (error.name === "AbortError") {
+      return res.status(504).json({
         success: false,
-        error:
-          "Image generation is taking too long. Please try with a simpler prompt.",
+        error: "Request timeout",
+        message:
+          "Image generation took too long. Please try with a simpler prompt.",
       });
     }
 
