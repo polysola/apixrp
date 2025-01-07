@@ -4,13 +4,34 @@ const cors = require("cors");
 
 const app = express();
 
+const allowedOrigins = [
+  "https://www.xrpthink.org",
+  "https://xrpthink.org",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
+
+// CORS configuration
 app.use(
   cors({
-    origin: "*",
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
 
 app.use(express.json());
 
@@ -39,6 +60,22 @@ app.get("/", (req, res) => {
       test: "/api/test",
     },
   });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  if (err.message === "Not allowed by CORS") {
+    res.status(403).json({
+      error: "CORS Error",
+      message: "Origin not allowed",
+    });
+  } else {
+    res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
 });
 
 if (process.env.NODE_ENV !== "production") {

@@ -8,12 +8,14 @@
     ],
     "routes": [
         {
-            "src": "/api/(.*)",
-            "dest": "/api/$1"
-        },
-        {
             "src": "/(.*)",
-            "dest": "/index.js"
+            "dest": "/index.js",
+            "headers": {
+                "Access-Control-Allow-Origin": "https://www.xrpthink.org",
+                "Access-Control-Allow-Methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Allow-Credentials": "true"
+            }
         }
     ]
 }
