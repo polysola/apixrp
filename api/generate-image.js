@@ -1,60 +1,70 @@
 const { OpenAI } = require("openai");
 
+// Thêm cấu hình Edge Runtime
+exports.runtime = "edge";
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Cấu hình cho Vercel về thời gian tối đa cho serverless function
-export const config = {
-  maxDuration: 60, // Cho phép function chạy tối đa 60 giây
-};
+async function handler(req, res) {
+  // CORS headers
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
-module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Thiết lập timeout ngắn hơn maxDuration một chút để đảm bảo có thể trả về response
-  const timeoutDuration = 55000; // 55 giây
-  let timeoutId;
-
   try {
     const { prompt } = req.body;
 
-    const imagePromise = openai.images.generate({
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-    });
+    // Tạo AbortController cho timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 seconds timeout
 
-    // Tạo promise với timeout
-    const result = await Promise.race([
-      imagePromise,
-      new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error("Vercel timeout"));
-        }, timeoutDuration);
-      }),
-    ]);
+    try {
+      const response = await openai.images.generate(
+        {
+          model: "dall-e-3",
+          prompt: prompt,
+          n: 1,
+          size: "1024x1024",
+        },
+        {
+          signal: controller.signal,
+        }
+      );
 
-    // Xóa timeout nếu thành công
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    res.json({
-      imageUrl: result.data[0].url,
-    });
-  } catch (error) {
-    // Xóa timeout nếu có lỗi
-    if (timeoutId) clearTimeout(timeoutId);
-
-    console.error("Error:", error);
-    if (error.message === "Vercel timeout") {
-      res.status(504).json({
-        error:
-          "Image generation is taking too long. Please try with a simpler prompt.",
+      return res.status(200).json({
+        type: "image",
+        message: prompt,
+        imageUrl: response.data[0].url,
       });
-    } else {
-      res.status(500).json({ error: "Something went wrong" });
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error.name === "AbortError") {
+        return res.status(408).json({
+          error: "Image generation took too long. Please try again.",
+        });
+      }
+      throw error;
     }
+  } catch (error) {
+    console.error("OpenAI API error:", error);
+
+    const errorMessage =
+      error.name === "AbortError"
+        ? "Request timed out. Please try again."
+        : "Failed to generate image";
+
+    return res.status(error.name === "AbortError" ? 408 : 500).json({
+      error: errorMessage,
+    });
   }
-};
+}
+
+module.exports = handler;
