@@ -14,7 +14,7 @@
     ],
     "functions": {
         "api/**/*.js": {
-            "runtime": "edge"
+            "maxDuration": 30
         }
     }
 }
