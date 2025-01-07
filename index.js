@@ -1,11 +1,29 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: [
+    "https://aiui222.vercel.app",
+    "http://localhost:3000",
+    "https://xrpthink.org",
+    "http://localhost:5173",
+  ],
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Pre-flight requests
+app.options("*", cors(corsOptions));
 
 // Import handlers
 const chatHandler = require("./api/chat");
