@@ -35,14 +35,7 @@ app.options("*", cors());
 
 app.use(express.json());
 
-// Import handlers
-const chatHandler = require("./api/chat");
-const imageHandler = require("./api/generate-image");
-
-// Routes
-app.post("/api/chat", chatHandler);
-app.post("/api/generate-image", imageHandler);
-
+// Test route only
 app.get("/api/test", (req, res) => {
   res.json({
     message: "API is working",
@@ -51,8 +44,10 @@ app.get("/api/test", (req, res) => {
   });
 });
 
+// Health check route
 app.get("/", (req, res) => {
   res.json({
+    status: "ok",
     message: "Welcome to APIXRP API",
     endpoints: {
       chat: "/api/chat",
@@ -60,22 +55,6 @@ app.get("/", (req, res) => {
       test: "/api/test",
     },
   });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  if (err.message === "Not allowed by CORS") {
-    res.status(403).json({
-      error: "CORS Error",
-      message: "Origin not allowed",
-    });
-  } else {
-    res.status(500).json({
-      error: "Internal Server Error",
-      message: err.message,
-    });
-  }
 });
 
 if (process.env.NODE_ENV !== "production") {
