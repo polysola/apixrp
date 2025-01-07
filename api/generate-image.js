@@ -1,20 +1,34 @@
 const { OpenAI } = require("openai");
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey:
+    process.env.OPENAI_API_KEY ||
+    (() => {
+      console.error("OPENAI_API_KEY is missing");
+      throw new Error("OPENAI_API_KEY is not configured");
+    })(),
 });
 
 async function handler(req, res) {
+  // Log để debug
+  console.log("Request received:", {
+    method: req.method,
+    body: req.body,
+    hasApiKey: !!process.env.OPENAI_API_KEY,
+  });
+
   try {
     const { prompt } = req.body;
 
     if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
+      return res.status(400).json({
+        success: false,
+        error: "Prompt is required",
+      });
     }
 
-    // Tạo AbortController để xử lý timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000); // 50 giây
+    const timeoutId = setTimeout(() => controller.abort(), 50000);
 
     try {
       const image = await openai.images.generate(
@@ -25,22 +39,21 @@ async function handler(req, res) {
           size: "1024x1024",
         },
         {
-          signal: controller.signal, // Thêm signal cho request
+          signal: controller.signal,
         }
       );
 
-      // Clear timeout khi thành công
       clearTimeout(timeoutId);
+      console.log("Image generated successfully:", image.data[0].url);
 
       return res.status(200).json({
         success: true,
         imageUrl: image.data[0].url,
       });
     } catch (error) {
-      // Clear timeout khi có lỗi
       clearTimeout(timeoutId);
+      console.error("OpenAI API Error:", error);
 
-      // Kiểm tra nếu là lỗi timeout
       if (error.name === "AbortError") {
         return res.status(408).json({
           success: false,
@@ -49,13 +62,19 @@ async function handler(req, res) {
             "Image generation took too long. Please try with a simpler prompt.",
         });
       }
-      throw error;
+
+      return res.status(500).json({
+        success: false,
+        error: "OpenAI API Error",
+        message: error.message,
+        code: error.code,
+      });
     }
   } catch (error) {
-    console.error("Error details:", error);
+    console.error("Server Error:", error);
     return res.status(500).json({
       success: false,
-      error: "Failed to generate image",
+      error: "Server Error",
       message: error.message,
     });
   }
