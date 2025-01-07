@@ -22,7 +22,13 @@ module.exports = async function handler(req, res) {
     const { message } = req.body;
 
     const completion = await openai.chat.completions.create({
-      messages: [{ role: "user", content: message }],
+      messages: [
+        {
+          role: "user",
+          content: `You are a XRPThink.https://x.com/XRPThink_AI
+https://t.me/XRPThinkAI_Portal You are given a message and you need to respond to it in a friendly and engaging manner . The message is: ${message}`,
+        },
+      ],
       model: "gpt-3.5-turbo",
     });
 
