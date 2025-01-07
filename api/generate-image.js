@@ -1,62 +1,60 @@
-import { OpenAI } from "openai";
+const { OpenAI } = require("openai");
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Cấu hình cho Vercel về thời gian tối đa cho serverless function
 export const config = {
-  maxDuration: 60,
+  maxDuration: 60, // Cho phép function chạy tối đa 60 giây
 };
 
-export default async function handler(req, res) {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-
-  // Thêm health check
-  if (req.method === "GET") {
-    return res
-      .status(200)
-      .json({ status: "Image generation endpoint is working" });
-  }
-
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // Thiết lập timeout ngắn hơn maxDuration một chút để đảm bảo có thể trả về response
+  const timeoutDuration = 55000; // 55 giây
+  let timeoutId;
+
   try {
-    console.log("Request body:", req.body);
     const { prompt } = req.body;
 
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), 50000)
-    );
+    const imagePromise = openai.images.generate({
+      prompt: prompt,
+      n: 1,
+      size: "1024x1024",
+    });
 
-    const image = await Promise.race([
-      openai.images.generate({
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
+    // Tạo promise với timeout
+    const result = await Promise.race([
+      imagePromise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Vercel timeout"));
+        }, timeoutDuration);
       }),
-      timeoutPromise,
     ]);
 
-    console.log("Image generated successfully:", { url: image.data[0].url });
+    // Xóa timeout nếu thành công
+    clearTimeout(timeoutId);
 
     res.json({
-      imageUrl: image.data[0].url,
+      imageUrl: result.data[0].url,
     });
   } catch (error) {
-    console.error("Detailed error:", error);
-    if (error.message === "Request timeout") {
+    // Xóa timeout nếu có lỗi
+    if (timeoutId) clearTimeout(timeoutId);
+
+    console.error("Error:", error);
+    if (error.message === "Vercel timeout") {
       res.status(504).json({
-        error: "Image generation is taking too long. Please try again.",
-        details: error.message,
+        error:
+          "Image generation is taking too long. Please try with a simpler prompt.",
       });
     } else {
-      res.status(500).json({
-        error: "Something went wrong",
-        details: error.message,
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
-      });
+      res.status(500).json({ error: "Something went wrong" });
     }
   }
-}
+};
