@@ -24,6 +24,17 @@ app.get("/api/test", (req, res) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.json({
+    message: "Welcome to APIXRP API",
+    endpoints: {
+      chat: "/api/chat",
+      generateImage: "/api/generate-image",
+      test: "/api/test",
+    },
+  });
+});
+
 // Only run server if not in Vercel environment
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
