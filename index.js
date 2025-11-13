@@ -49,7 +49,7 @@ app.get("/api/test", (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
-    message: "Welcome to APIXRP API",
+    message: "Welcome to AI API",
     endpoints: {
       chat: "/api/chat",
       generateImage: "/api/generate-image",
