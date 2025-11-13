@@ -6,7 +6,7 @@ export const config = {
 };
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://www.tonthink.space",
+  "Access-Control-Allow-Origin": "https://www.tonthink.space, http://localhost:5173",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Credentials": "true",
