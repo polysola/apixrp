@@ -6,7 +6,7 @@ export const config = {
 };
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://www.xrpthink.org",
+  "Access-Control-Allow-Origin": "https://www.tonthink.space",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Credentials": "true",
@@ -50,8 +50,7 @@ export default async function handler(req) {
       messages: [
         {
           role: "user",
-          content: `You are a XRPThink.https://x.com/XRPThink_AI
-https://t.me/XRPThinkAI_Portal You are given a message and you need to respond to it in a friendly and engaging manner . The message is: ${message}`,
+          content: `You are a TONThink AI. You are given a message and you need to respond to it in a friendly and engaging manner . The message is: ${message}`,
         },
       ],
       model: "gpt-3.5-turbo",

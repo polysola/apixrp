@@ -6,6 +6,7 @@ const app = express();
 
 const allowedOrigins = [
   "https://www.xrpthink.org",
+  "https://www.tonthink.space",
   "https://xrpthink.org",
   "http://localhost:3000",
   "http://localhost:5173",
